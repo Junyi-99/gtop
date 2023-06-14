@@ -35,7 +35,7 @@ class GPU:
         self.mem_clocks_max = mem_clocks_max # in MHz
 
         self.progress_utl = Progress(
-            TextColumn("[bold green][{task.fields[gpuid]}] [bold blue]UTL"),
+            TextColumn("[dodger_blue3][{task.fields[gpuid]}] [bold blue]UTL"),
             SpinnerColumn(),
             BarColumn(finished_style = "red", ),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
@@ -96,6 +96,9 @@ class GPU:
         if energy < 0:
             raise ValueError("energy must be positive")
         self.energy = energy
+    
+    def get_energy(self):
+        return f"{self.energy:>9.2f}kJ"
     
     def get_progress_utl(self):
         return self.progress_utl

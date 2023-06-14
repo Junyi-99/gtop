@@ -24,7 +24,7 @@ def generate_table() -> Table:
     
     cuda = nvmlSystemGetCudaDriverVersion()
     outer_table.add_row(
-        Panel.fit(f"Driver Version: {nvmlSystemGetDriverVersion()}  CUDA Version: {cuda//1000}.{cuda%1000//10}", title="Info Pads", border_style="magenta", padding=(0,0), title_align='left'),
+        Panel.fit(f"[bold]Driver Version: {nvmlSystemGetDriverVersion()}  CUDA Version: {cuda//1000}.{cuda%1000//10}", title="", border_style="magenta", padding=(0,2), title_align='left'),
     )
     for gpu_name in gpus:
         table = Table(show_header=False, header_style="bold magenta", padding=(0,1), show_edge=False)
@@ -34,7 +34,7 @@ def generate_table() -> Table:
         table.add_column("Mem", style="yellow", justify="center", max_width=30)
         table.add_column("Power", style="yellow", justify="center")
         table.add_column("Temp", style="blue", justify="center")
-        # table.add_column("Energy Consumption", style="red", justify="center")
+        table.add_column("Energy Consumption", style="red", justify="center")
         # table.add_column("GPU Clocks", style="magenta", justify="center")
         # table.add_column("Memory Clocks", style="magenta", justify="center")
         for gpu in gpus[gpu_name]:
@@ -43,7 +43,8 @@ def generate_table() -> Table:
                 gpu.get_progress_utl(),
                 gpu.get_progress_mem(),
                 gpu.get_power(),
-                gpu.get_temperture()
+                gpu.get_temperture(),
+                gpu.get_energy(),
             )
         outer_table.add_row(Panel.fit(table, title=gpu_name, border_style="magenta", padding=(0,0), title_align='left'))
 
