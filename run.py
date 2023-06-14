@@ -12,39 +12,38 @@ import time
 from rich.panel import Panel
 from time import sleep
 from gpu import GPU
-
+from collections import defaultdict
 
 
 def generate_table() -> Table:
     global gpus, ngpus
     
-    table = Table(show_header=True, header_style="bold magenta")
-    ui = Panel.fit(
-        table, title="", border_style="magenta", padding=(0,0)
-    )
-    table.box = box.SIMPLE_HEAD
-    table.add_column("GPU", style="cyan", justify="center", no_wrap=True)
-    table.add_column("Util", style="green", justify="center", max_width=20)
-    table.add_column("Mem", style="yellow", justify="center", max_width=30)
-    table.add_column("Power", style="yellow", justify="center")
-    table.add_column("Temp", style="blue", justify="center")
-    # table.add_column("Energy Consumption", style="red", justify="center")
-    # table.add_column("GPU Clocks", style="magenta", justify="center")
-    # table.add_column("Memory Clocks", style="magenta", justify="center")
+    outer_table = Table.grid()
+    ui = outer_table
+    
+    for gpu_name in gpus:
+        table = Table(show_header=False, header_style="bold magenta", padding=(0,1), show_edge=False)
+        table.box = box.MINIMAL
+        table.add_column("GPU", style="cyan", justify="center", no_wrap=True)
+        table.add_column("Util", style="green", justify="center", max_width=20)
+        table.add_column("Mem", style="yellow", justify="center", max_width=30)
+        table.add_column("Power", style="yellow", justify="center")
+        table.add_column("Temp", style="blue", justify="center")
+        # table.add_column("Energy Consumption", style="red", justify="center")
+        # table.add_column("GPU Clocks", style="magenta", justify="center")
+        # table.add_column("Memory Clocks", style="magenta", justify="center")
+        for gpu in gpus[gpu_name]:
+            table.add_row(
+                str(gpu.get_id()),
+                gpu.get_progress_utl(),
+                gpu.get_progress_mem(),
+                gpu.get_power(),
+                gpu.get_temperture()
+            )
+        outer_table.add_row(Panel.fit(table, title=gpu_name, border_style="magenta", padding=(0,0), title_align='left'))
+
     
     
-    table.add_section()
-
-    global progress_gpu_utl, progress_gpu_mem, progress_gpu_mem_jobs, progress_gpu_utl_jobs
-
-    for i in range(ngpus):
-        table.add_row(
-            gpus[i].get_id(),
-            gpus[i].get_progress_utl(),
-            gpus[i].get_progress_mem(),
-            gpus[i].get_power(),
-            gpus[i].get_temperture()
-        )
     
     # for i in range(ngpus):
     #     gpu = nvmlDeviceGetHandleByIndex(i)
@@ -67,40 +66,47 @@ async def init_gpu_info():
     # if nvml
     nvmlInit()
     ngpus = nvmlDeviceGetCount()
-    gpus = [None] * ngpus
-    for i in range(ngpus):
-        handle = nvmlDeviceGetHandleByIndex(i)
+    gpus = defaultdict(list)
+    for idx in range(ngpus):
+        handle = nvmlDeviceGetHandleByIndex(idx)
         name = nvmlDeviceGetName(handle)
         memory = nvmlDeviceGetMemoryInfo(handle)
         gpu_clocks_max = nvmlDeviceGetMaxClockInfo(handle, NVML_CLOCK_GRAPHICS)
         mem_clocks_max = nvmlDeviceGetMaxClockInfo(handle, NVML_CLOCK_MEM)
-        gpus[i] = GPU(
-            str(i),
+        gpus[name].append(GPU(
+            idx,
             memory.total,
             gpu_clocks_max,
             mem_clocks_max
-        )
+        ))
+        
+        gpus["NVIDIA RTX-3090"].append(GPU(
+            idx,
+            memory.total,
+            gpu_clocks_max,
+            mem_clocks_max
+        ))
 
 async def fetch_gpu_info():
     global gpus, ngpus
     while True:
-        for i in range(ngpus):
-            gpu = nvmlDeviceGetHandleByIndex(i)
-        
-            utilization = nvmlDeviceGetUtilizationRates(gpu)
-            power_usage = nvmlDeviceGetPowerUsage(gpu) / 1000.0  # in watts
-            temperature = nvmlDeviceGetTemperature(gpu, NVML_TEMPERATURE_GPU)
-            energy_consumption = nvmlDeviceGetTotalEnergyConsumption(gpu) / 1000.0 / 1000.0  # in kJoule
-            gpu_clocks = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_GRAPHICS)
-            mem_clocks = nvmlDeviceGetClockInfo(gpu, NVML_CLOCK_MEM)
-            gpu_memory = nvmlDeviceGetMemoryInfo(gpu)
+        for gpu_name in gpus:
+            for gpu in gpus[gpu_name]:
+                handle = nvmlDeviceGetHandleByIndex(gpu.get_id())
+                utilization = nvmlDeviceGetUtilizationRates(handle)
+                power_usage = nvmlDeviceGetPowerUsage(handle) / 1000.0  # in watts
+                temperature = nvmlDeviceGetTemperature(handle, NVML_TEMPERATURE_GPU)
+                energy_consumption = nvmlDeviceGetTotalEnergyConsumption(handle) / 1000.0 / 1000.0  # in kJoule
+                gpu_clocks = nvmlDeviceGetClockInfo(handle, NVML_CLOCK_GRAPHICS)
+                mem_clocks = nvmlDeviceGetClockInfo(handle, NVML_CLOCK_MEM)
+                gpu_memory = nvmlDeviceGetMemoryInfo(handle)
 
-            gpus[i].set_mem_used(gpu_memory.used)
-            gpus[i].set_gpu_temperture(temperature)
-            gpus[i].set_power(power_usage)
-            gpus[i].set_utl(utilization.gpu)
-            gpus[i].set_clocks(gpu_clocks, mem_clocks)
-            gpus[i].set_energy(energy_consumption)
+                gpu.set_mem_used(gpu_memory.used)
+                gpu.set_gpu_temperture(temperature)
+                gpu.set_power(power_usage)
+                gpu.set_utl(utilization.gpu)
+                gpu.set_clocks(gpu_clocks, mem_clocks)
+                gpu.set_energy(energy_consumption)        
         await asyncio.sleep(0.5)
 
 async def update_table():
