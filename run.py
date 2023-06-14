@@ -2,6 +2,7 @@ from pynvml import *
 import asyncio
 import psutil
 from rich import box
+from rich import bar
 from rich.live import Live
 from rich.table import Table
 from rich.console import Console
@@ -21,10 +22,14 @@ def generate_table() -> Table:
     outer_table = Table.grid()
     ui = outer_table
     
+    cuda = nvmlSystemGetCudaDriverVersion()
+    outer_table.add_row(
+        Panel.fit(f"Driver Version: {nvmlSystemGetDriverVersion()}  CUDA Version: {cuda//1000}.{cuda%1000//10}", title="Info Pads", border_style="magenta", padding=(0,0), title_align='left'),
+    )
     for gpu_name in gpus:
         table = Table(show_header=False, header_style="bold magenta", padding=(0,1), show_edge=False)
         table.box = box.MINIMAL
-        table.add_column("GPU", style="cyan", justify="center", no_wrap=True)
+        # table.add_column("GPU", style="cyan", justify="center", no_wrap=True)
         table.add_column("Util", style="green", justify="center", max_width=20)
         table.add_column("Mem", style="yellow", justify="center", max_width=30)
         table.add_column("Power", style="yellow", justify="center")
@@ -34,7 +39,7 @@ def generate_table() -> Table:
         # table.add_column("Memory Clocks", style="magenta", justify="center")
         for gpu in gpus[gpu_name]:
             table.add_row(
-                str(gpu.get_id()),
+                # f"[{gpu.get_id()}]",
                 gpu.get_progress_utl(),
                 gpu.get_progress_mem(),
                 gpu.get_power(),
@@ -79,7 +84,7 @@ async def init_gpu_info():
             gpu_clocks_max,
             mem_clocks_max
         ))
-        
+
         gpus["NVIDIA RTX-3090"].append(GPU(
             idx,
             memory.total,

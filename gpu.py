@@ -1,19 +1,20 @@
 
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
+from rich import bar
 
 def bytes_to_human_readable(bytes: int) -> str:
     if bytes < 1024:
         return str(round(bytes,1)) + "B"
     elif bytes < 1024 ** 2:
-        return str(round(bytes / 1024,1)) + "KB"
+        return str(round(bytes / 1024,1)) + "KiB"
     elif bytes < 1024 ** 3:
-        return str(round(bytes / 1024 ** 2,1)) + "MB"
+        return str(round(bytes / 1024 ** 2,1)) + "MiB"
     elif bytes < 1024 ** 4:
-        return str(round(bytes / 1024 ** 3,1)) + "GB"
+        return str(round(bytes / 1024 ** 3,1)) + "GiB"
     elif bytes < 1024 ** 5:
-        return str(round(bytes / 1024 ** 4,1)) + "TB"
+        return str(round(bytes / 1024 ** 4,1)) + "TiB"
     else:
-        return str(round(bytes / 1024 ** 5,1)) + "PB"
+        return str(round(bytes / 1024 ** 5,1)) + "PiB"
 
 class GPU:
     def __init__(self, id, mem_total: int, gpu_clocks_max: int, mem_clocks_max) -> None:
@@ -34,16 +35,19 @@ class GPU:
         self.mem_clocks_max = mem_clocks_max # in MHz
 
         self.progress_utl = Progress(
+            TextColumn("[bold green][{task.fields[gpuid]}] [bold blue]UTL"),
             SpinnerColumn(),
-            BarColumn(finished_style = "red"),
+            BarColumn(finished_style = "red", ),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
         )
         self.progress_utl.add_task("GPU Utilization", total = 100)
+        self.progress_utl.update(0, gpuid=self.id)
 
         self.progress_mem = Progress(
+            TextColumn("[bold blue]MEM"),
             SpinnerColumn(),
-            BarColumn(finished_style = "red"),
-            TextColumn("[progress.percentage]{task.fields[mem_used]:>7s}/{task.fields[mem_total]}"),
+            BarColumn(finished_style = "red", complete_style="spring_green4"),
+            TextColumn("[progress.percentage]{task.fields[mem_used]:>8s}/{task.fields[mem_total]}"),
         )
         self.progress_mem.add_task("GPU Memory", total = self.mem_total)
         self.progress_mem.update(0, mem_total=bytes_to_human_readable(self.mem_total))
